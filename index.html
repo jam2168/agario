@@ -1,104 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Agar.io Clone</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #f0f0f0;
-        }
-        canvas {
-            display: block;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simple Agar.io Clone</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #f0f0f0;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+  <canvas id="gameCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    const player = {
+      x: 0,
+      y: 0,
+      radius: 20,
+      color: "blue",
+    };
 
-        const player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 20,
-            color: "blue",
-        };
+    const mouse = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+    };
 
-        const mouse = { x: player.x, y: player.y };
+    window.addEventListener("mousemove", (event) => {
+      mouse.x = event.clientX;
+      mouse.y = event.clientY;
+    });
 
-        window.addEventListener("mousemove", (event) => {
-            mouse.x = event.clientX;
-            mouse.y = event.clientY;
+    const colors = ["red", "green", "blue", "pink", "purple", "orange", "pink"];
+    function getRandomColor() {
+      return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    const foods = [];
+    const worldSize = 20000;
+    function spawnFood(count = 5) {
+      for (let i = 0; i < count; i++) {
+        const foodX = (Math.random() - 0.5) * worldSize;
+        const foodY = (Math.random() - 0.5) * worldSize;
+        foods.push({
+          x: foodX,
+          y: foodY,
+          radius: 5,
+          color: getRandomColor(),
         });
+      }
+    }
+    spawnFood(500);
 
-        const colors = ["red", "green", "blue", "yellow", "purple", "orange", "pink"];
+    function checkCollision(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y) < a.radius + b.radius;
+    }
 
-        function getRandomColor() {
-            return colors[Math.floor(Math.random() * colors.length)];
+    function drawGrid() {
+      const gridSpacing = 50;
+      ctx.strokeStyle = "#ddd";
+      ctx.lineWidth = 1;
+      const left = player.x - canvas.width / 2;
+      const right = player.x + canvas.width / 2;
+      const top = player.y - canvas.height / 2;
+      const bottom = player.y + canvas.height / 2;
+      const startX = Math.floor(left / gridSpacing) * gridSpacing;
+      const startY = Math.floor(top / gridSpacing) * gridSpacing;
+      for (let x = startX; x <= right; x += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+      }
+      for (let y = startY; y <= bottom; y += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+      }
+    }
+
+    function update() {
+      const dx = mouse.x - canvas.width / 2;
+      const dy = mouse.y - canvas.height / 2;
+      player.x += dx * 0.05;
+      player.y += dy * 0.05;
+      for (let i = foods.length - 1; i >= 0; i--) {
+        if (checkCollision(player, foods[i])) {
+          player.radius += 1;
+          foods.splice(i, 1);
         }
+      }
+    }
 
-        const foods = [];
-        function spawnFood(count = 5) {
-            for (let i = 0; i < count; i++) {
-                foods.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: 5,
-                    color: getRandomColor(),
-                });
-            }
-        }
-        spawnFood(20); 
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+      drawGrid();
+      foods.forEach(food => {
+        ctx.beginPath();
+        ctx.arc(food.x, food.y, food.radius, 0, Math.PI * 2);
+        ctx.fillStyle = food.color;
+        ctx.fill();
+        ctx.closePath();
+      });
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fillStyle = player.color;
+      ctx.fill();
+      ctx.closePath();
+      ctx.restore();
+    }
 
-        function checkCollision(a, b) {
-            return Math.hypot(a.x - b.x, a.y - b.y) < a.radius + b.radius;
-        }
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
 
-        function update() {
-            player.x += (mouse.x - player.x) * 0.05;
-            player.y += (mouse.y - player.y) * 0.05;
-
-            for (let i = foods.length - 1; i >= 0; i--) {
-                if (checkCollision(player, foods[i])) {
-                    player.radius += 1;
-                    foods.splice(i, 1);
-                }
-            }
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-            ctx.fillStyle = player.color;
-            ctx.fill();
-            ctx.closePath();
-
-            foods.forEach(food => {
-                ctx.beginPath();
-                ctx.arc(food.x, food.y, food.radius, 0, Math.PI * 2);
-                ctx.fillStyle = food.color;
-                ctx.fill();
-                ctx.closePath();
-            });
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        setInterval(() => spawnFood(5), 3000); 
-        gameLoop();
-    </script>
+    setInterval(() => spawnFood(500), 3000);
+    gameLoop();
+  </script>
 </body>
 </html>
